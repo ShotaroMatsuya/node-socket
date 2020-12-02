@@ -64,7 +64,7 @@ exports.createPost = (req, res, next) => {
       return user.save();
 
     }).then(result => {
-        res.status(201).json({
+        res.status(201).json({//createに成功した場合は201を使う事が多い
           message: 'Post created successfully!',
           post: post,
           creator: {
@@ -169,12 +169,12 @@ exports.deletePost = (req, res, next) => {
         error.statusCode = 404;
         throw error; //asynchronous でもthenブロックの中ではthrowを使ってcatchブロックにわたす
       }
+      //check logged in user
       if (post.creator.toString() !== req.userId) {
         const error = new Error('Not authorized!');
         error.statusCode = 403;
         throw error;
       }
-      //check logged in user
       clearImage(post.imageUrl);
       return Post.findByIdAndRemove(postId);
     })
@@ -199,5 +199,5 @@ exports.deletePost = (req, res, next) => {
 
 const clearImage = filePath => {
   filePath = path.join(__dirname, '..', filePath);
-  fs.unlink(filePath, err => console.log(err));
+  fs.unlink(filePath, err => console.log(err));//delete file in storage
 };

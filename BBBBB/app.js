@@ -10,10 +10,10 @@ const feedRoutes = require('./routes/feed');
 const authRoutes = require('./routes/auth');
 
 const app = express();
+
 const fileStorage = multer.diskStorage({
   destination: (req, file, cb) => {
     cb(null, 'images');
-
   },
   filename: (req, file, cb) => {
     cb(null, new Date().toISOString() + '-' + file.originalname);
@@ -48,7 +48,7 @@ app.use((req, res, next) => {
 
 app.use('/feed', feedRoutes);
 app.use('/auth', authRoutes);
-app.use((error, req, res, next) => {
+app.use((error, req, res, next) => {//error handling middleware
   console.log(error);
   const status = error.statusCode || 500;
   const message = error.message;
@@ -61,10 +61,10 @@ app.use((error, req, res, next) => {
 
 mongoose
   .connect(
-    'mongodb+srv://Shotaro:jwZSmOwo5mjuiKBz@cluster0.ymvli.mongodb.net/messages?retryWrites=true&w=majority'
+    `mongodb+srv://${process.env.MONGO_USER}:${process.env.MONGO_PASSWORD}@cluster0.ymvli.mongodb.net/${process.env.MONGO_DEFAULT_DATABASE}?retryWrites=true&w=majority`
   )
   .then(result => {
-    app.listen(8080);
+    app.listen(process.env.PORT || 8080);
   })
   .catch(err => {
     console.log(err);

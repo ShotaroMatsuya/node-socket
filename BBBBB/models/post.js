@@ -20,7 +20,7 @@ const postSchema = new Schema({
         required: true
     }
 }, {
-    timestamps: true
+    timestamps: true//automaticallyにcreatedAt,updatedAtを追加してくれる
 });
 
 module.exports = mongoose.model('Post', postSchema);
