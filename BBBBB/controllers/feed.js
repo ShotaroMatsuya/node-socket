@@ -1,8 +1,9 @@
 const fs = require('fs');
 const path = require('path');
 const { validationResult } = require('express-validator/check');
-const Post = require('../models/post');
+const io = require('../socket');
 
+const Post = require('../models/post');
 const User = require('../models/user');
 
 exports.getPosts = (req, res, next) => {
@@ -15,6 +16,7 @@ exports.getPosts = (req, res, next) => {
       totalItems = count;
       return Post.find()
         .populate('creator') //postと紐づくuserモデルを取得する(refで指定しているcolumn名)
+        .sort({ createdAt: -1 })
         .skip((currentPage - 1) * perPage)
         .limit(perPage);
     })
@@ -61,10 +63,21 @@ exports.createPost = (req, res, next) => {
     })
     .then(user => {
       creator = user;
-      user.posts.push(post); //post(object)をarrayに追加
+      user.posts.push(post); //post(object)をarray末尾に追加
       return user.save();
     })
     .then(result => {
+      //emitメソッドはall user,broadcastはreqした人以外すべてのuser
+      io.getIO().emit('posts', {
+        action: 'create',
+        post: {
+          ...post._doc, //all the data about posts
+          creator: {
+            _id: req.userId,
+            name: creator.name,
+          },
+        },
+      }); //第一引数にevent name,第二引数にsendingするdata
       res.status(201).json({
         //createに成功した場合は201を使う事が多い
         message: 'Post created successfully!',
@@ -126,13 +139,14 @@ exports.updatePost = (req, res, next) => {
     throw error;
   }
   Post.findById(postId)
+    .populate('creator') //postからすべてのuser情報をretrieve
     .then(post => {
       if (!post) {
         const error = new Error('Could not find  post.');
         error.statusCode = 404;
         throw error; //asynchronous でもthenブロックの中ではthrowを使ってcatchブロックにわたす
       }
-      if (post.creator.toString() !== req.userId) {
+      if (post.creator._id.toString() !== req.userId) {
         //postのuseIdとtokenのuserIdが一致するかcheck
         const error = new Error('Not authorized!');
         error.statusCode = 403;
@@ -147,6 +161,7 @@ exports.updatePost = (req, res, next) => {
       return post.save();
     })
     .then(result => {
+      io.getIO().emit('posts', { action: 'update', post: result });
       res.status(200).json({
         message: 'Post updated!',
         post: result,
@@ -185,6 +200,7 @@ exports.deletePost = (req, res, next) => {
       return user.save();
     })
     .then(result => {
+      io.getIO().emit('posts', { action: 'delete', post: postId });
       res.status(200).json({
         message: 'Deleted post.',
       });

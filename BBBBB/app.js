@@ -71,7 +71,12 @@ mongoose
     `mongodb+srv://${process.env.MONGO_USER}:${process.env.MONGO_PASSWORD}@cluster0.ymvli.mongodb.net/${process.env.MONGO_DEFAULT_DATABASE}?retryWrites=true&w=majority`
   )
   .then(result => {
-    app.listen(process.env.PORT || 8080);
+    const server = app.listen(process.env.PORT || 8080);
+    // establish socket connection via http protocol
+    const io = require('./socket').init(server);
+    io.on('connection', socket => {
+      console.log('Client connected!');
+    });
   })
   .catch(err => {
     console.log(err);
