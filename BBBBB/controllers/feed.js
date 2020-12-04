@@ -1,12 +1,9 @@
 const fs = require('fs');
 const path = require('path');
-const {
-  validationResult
-} = require('express-validator/check');
+const { validationResult } = require('express-validator/check');
 const Post = require('../models/post');
 
 const User = require('../models/user');
-
 
 exports.getPosts = (req, res, next) => {
   const currentPage = req.query.page || 1;
@@ -16,13 +13,16 @@ exports.getPosts = (req, res, next) => {
     .countDocuments()
     .then(count => {
       totalItems = count;
-      return Post.find().skip((currentPage - 1) * perPage).limit(perPage);
+      return Post.find()
+        .populate('creator') //postと紐づくuserモデルを取得する(refで指定しているcolumn名)
+        .skip((currentPage - 1) * perPage)
+        .limit(perPage);
     })
     .then(posts => {
       res.status(200).json({
         message: 'Fetched posts successfully.',
         posts: posts,
-        totalItems: totalItems
+        totalItems: totalItems,
       });
     })
     .catch(err => {
@@ -52,30 +52,29 @@ exports.createPost = (req, res, next) => {
     title: title,
     content: content,
     imageUrl: imageUrl,
-    creator: req.userId
+    creator: req.userId,
   });
   post
     .save()
     .then(result => {
       return User.findById(req.userId);
-    }).then(user => {
+    })
+    .then(user => {
       creator = user;
-      user.posts.push(post);
+      user.posts.push(post); //post(object)をarrayに追加
       return user.save();
-
-    }).then(result => {
-        res.status(201).json({//createに成功した場合は201を使う事が多い
-          message: 'Post created successfully!',
-          post: post,
-          creator: {
-            _id: creator._id,
-            name: creator.name
-          }
-        });
-
-      }
-
-    )
+    })
+    .then(result => {
+      res.status(201).json({
+        //createに成功した場合は201を使う事が多い
+        message: 'Post created successfully!',
+        post: post,
+        creator: {
+          _id: creator._id,
+          name: creator.name,
+        },
+      });
+    })
     .catch(err => {
       if (!err.statusCode) {
         err.statusCode = 500;
@@ -134,6 +133,7 @@ exports.updatePost = (req, res, next) => {
         throw error; //asynchronous でもthenブロックの中ではthrowを使ってcatchブロックにわたす
       }
       if (post.creator.toString() !== req.userId) {
+        //postのuseIdとtokenのuserIdが一致するかcheck
         const error = new Error('Not authorized!');
         error.statusCode = 403;
         throw error;
@@ -161,8 +161,7 @@ exports.updatePost = (req, res, next) => {
 };
 exports.deletePost = (req, res, next) => {
   const postId = req.params.postId;
-  Post
-    .findById(postId)
+  Post.findById(postId)
     .then(post => {
       if (!post) {
         const error = new Error('Could not find  post.');
@@ -176,15 +175,16 @@ exports.deletePost = (req, res, next) => {
         throw error;
       }
       clearImage(post.imageUrl);
-      return Post.findByIdAndRemove(postId);
+      return Post.findByIdAndRemove(postId); //postモデルの削除
     })
     .then(result => {
       return User.findById(req.userId);
-    }).then(user => {
-      user.posts.pull(postId);
+    })
+    .then(user => {
+      user.posts.pull(postId); //userモデル内のpostの削除(user.postsはarray型)
       return user.save();
-
-    }).then(result => {
+    })
+    .then(result => {
       res.status(200).json({
         message: 'Deleted post.',
       });
@@ -199,5 +199,5 @@ exports.deletePost = (req, res, next) => {
 
 const clearImage = filePath => {
   filePath = path.join(__dirname, '..', filePath);
-  fs.unlink(filePath, err => console.log(err));//delete file in storage
+  fs.unlink(filePath, err => console.log(err)); //delete file in storage
 };
