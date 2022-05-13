@@ -79,5 +79,7 @@ mongoose
     });
   })
   .catch(err => {
+    console.log('えら');
+
     console.log(err);
   });

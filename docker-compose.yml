@@ -1,0 +1,35 @@
+version: '3.8'
+services:
+  server:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.back
+    environment:
+      - NODE_ENV=development
+    ports:
+      - '8080:8080'
+    volumes:
+      - /app/node_modules
+      - ./backend:/app
+
+  front:
+    build:
+      context: ./front
+      dockerfile: Dockerfile.front
+    environment:
+      - NODE_ENV=developement
+    ports:
+      - '3000:3000'
+    volumes:
+      - /app/node_modules
+      - ./front:/app
+
+  npm:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.back
+    working_dir: /app
+    entrypoint: ['npm']
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
